@@ -12,7 +12,6 @@ export class StormOverlay extends CustomOverlay {
   }
 
   draw() {
-    console.log('Draw Storm', this.bounds.toString(), this.div);
     const projection = this.getProjection();
     if (projection && this.div) {
       const box = new Box();
@@ -26,8 +25,6 @@ export class StormOverlay extends CustomOverlay {
 
       box.left = southWest.x;
       box.top = northEast.y;
-
-      console.log('Um,', northEast.toString(), southWest.toString());
 
       box.width = northEast.x - southWest.x;
       box.height = southWest.y - northEast.y;

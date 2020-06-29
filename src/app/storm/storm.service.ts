@@ -33,14 +33,7 @@ export class StormService {
       this.width,
       Heading.SOUTHWEST
     );
-    console.log(
-      'Center:',
-      this.center.toString(),
-      'NE',
-      northEast.toString(),
-      'SW',
-      southWest.toString()
-    );
+
     return (this.latLngBounds = new google.maps.LatLngBounds(
       southWest,
       northEast

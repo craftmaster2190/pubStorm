@@ -4,6 +4,7 @@ import {
   OnInit,
   AfterViewInit,
   NgZone,
+  ElementRef,
 } from '@angular/core';
 import {} from 'googlemaps';
 import { timer, Observable, ReplaySubject, throwError, of } from 'rxjs';
@@ -13,6 +14,7 @@ import { PlayerPositionService } from './players/player-position.service';
 import { PlayerOverlay } from './players/player-overlay';
 import { StormService } from './storm/storm.service';
 import { StormOverlay } from './storm/storm-overlay';
+import { jsonifyError } from './util/errors';
 
 @Component({
   selector: 'app-root',
@@ -20,11 +22,12 @@ import { StormOverlay } from './storm/storm-overlay';
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements OnInit, AfterViewInit {
-  @ViewChild('mapDiv') mapElement: any;
+  @ViewChild('mapDiv') mapElement: ElementRef<HTMLDivElement>;
   map: google.maps.Map;
   coordinates = new ReplaySubject<Coordinates>(1);
   players: { [key: string]: CustomOverlay } = {};
   storm: StormOverlay;
+  error;
 
   constructor(
     private readonly playerPositionService: PlayerPositionService,
@@ -39,15 +42,23 @@ export class AppComponent implements OnInit, AfterViewInit {
           () =>
             new Observable<Position>((sub) => {
               if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    sub.next(position);
-                  },
-                  (err) => {
-                    sub.error(err);
-                  },
-                  { enableHighAccuracy: true, maximumAge: 1000, timeout: 1000 }
-                );
+                try {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      sub.next(position);
+                    },
+                    (err) => {
+                      sub.error(err);
+                    },
+                    {
+                      enableHighAccuracy: true,
+                      maximumAge: 1000,
+                      timeout: 1000,
+                    }
+                  );
+                } catch (err) {
+                  sub.error(err);
+                }
               } else {
                 sub.error(new Error("Geolocation doesn't work!"));
               }
@@ -58,6 +69,7 @@ export class AppComponent implements OnInit, AfterViewInit {
         ),
         catchError((err) => {
           console.log(err);
+          this.error = jsonifyError(err);
           return of();
         })
       )
@@ -82,6 +94,7 @@ export class AppComponent implements OnInit, AfterViewInit {
               mapTypeId: google.maps.MapTypeId.TERRAIN,
               disableDefaultUI: true,
             };
+            this.mapElement.nativeElement.innerHTML = '';
             this.map = new google.maps.Map(
               this.mapElement.nativeElement,
               mapProperties
@@ -93,7 +106,6 @@ export class AppComponent implements OnInit, AfterViewInit {
             .getPlayers()
             .pipe(
               tap((players) => {
-                // console.log('players', players);
                 players.forEach((player) => {
                   if (!this.players[player.id]) {
                     this.players[player.id] = new PlayerOverlay(
@@ -114,7 +126,6 @@ export class AppComponent implements OnInit, AfterViewInit {
             .getStorm()
             .pipe(
               tap((stormBounds) => {
-                console.log('stormBounds', stormBounds);
                 if (!this.storm) {
                   this.storm = new StormOverlay(stormBounds, this.map);
                 }
